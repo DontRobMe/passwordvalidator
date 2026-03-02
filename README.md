@@ -34,7 +34,7 @@ Le validateur fournit aussi un **indice de force** du mot de passe :
 ## 2. Structure du projet
 
 ```text
-C:\Users\Franc\IdeaProjects\Password validator
+C:\Users\Franc\IdeaProjects\Passwordvalidator
 ├─ src
 │  └─ passwordValidator.py
 └─ tests
