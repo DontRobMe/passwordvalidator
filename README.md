@@ -1,4 +1,48 @@
-# Password Validator - Architecture Professionnelle
+# Password Validator
+
+Ce projet fournit un validateur de mots de passe en Python, ainsi qu’une suite de tests unitaires avec `pytest`.
+
+## 1. Règles de validation
+
+Un mot de passe est **valide** s’il respecte toutes les règles suivantes :
+
+1. Longueur :
+   - Minimum **8** caractères
+   - Maximum **20** caractères
+2. Contenu :
+   - Au moins **1 majuscule**
+   - Au moins **1 minuscule**
+   - Au moins **1 chiffre**
+   - Au moins **1 caractère spécial** parmi : `@#$%^&+=`
+3. Restrictions :
+   - **Aucun espace**
+   - **Pas plus de 3 caractères identiques consécutifs** (ex : `aaaa` est invalide)
+   - **Ne doit pas faire partie** d’une liste de mots de passe courants (blacklist simple)
+4. Complexité minimale :
+   - Le mot de passe doit contenir **au moins 3 types** différents parmi :
+     - majuscules
+     - minuscules
+     - chiffres
+     - caractères spéciaux
+
+Le validateur fournit aussi un **indice de force** du mot de passe :
+
+- `weak` : faible
+- `medium` : moyen
+- `strong` : fort
+
+## 2. Structure du projet
+
+```text
+C:\Users\Franc\IdeaProjects\Passwordvalidator
+├─ src
+│  └─ passwordValidator.py
+└─ tests
+   └─ test_passwordValidator.py
+```
+
+- `src/passwordValidator.py` : contient la classe `PasswordValidator` et l’énumération `PasswordStrength`.
+- `tests/test_passwordValidator.py` : contient les tests unitaires organisés **par catégorie** (longueur, espaces, blacklist, force, etc.).
 
 Validateur de mots de passe en Python avec architecture modulaire, configuration flexible et tests unitaires complets.
 
