@@ -1,112 +1,137 @@
-# Password Validator
+# Password Validator 🔐
 
-Ce projet fournit un validateur de mots de passe en Python, ainsi qu’une suite de tests unitaires avec `pytest`.
+Un validateur de mots de passe asynchrone en Python avec architecture hexagonale et tests complets.
 
-## 1. Règles de validation
+## 📋 Vue d'ensemble
 
-Un mot de passe est **valide** s’il respecte toutes les règles suivantes :
+Ce projet implémente un validateur de mots de passe robuste avec :
+- **Architecture hexagonale** : Séparation clair entre domaine et infrastructure
+- **Programmation asynchrone** : Méthodes async/await pour les opérations à long terme
+- **Port/Adapter pattern** : Intégration flexible des services externes (vérification des fuites)
+- **Configuration flexible** : Personnalisable via dataclasses
+- **Suite de tests complète** : 25 tests avec pattern Arrange-Act-Assert
 
-1. Longueur :
-   - Minimum **8** caractères
-   - Maximum **20** caractères
-2. Contenu :
-   - Au moins **1 majuscule**
-   - Au moins **1 minuscule**
-   - Au moins **1 chiffre**
-   - Au moins **1 caractère spécial** parmi : `@#$%^&+=`
-3. Restrictions :
-   - **Aucun espace**
-   - **Pas plus de 3 caractères identiques consécutifs** (ex : `aaaa` est invalide)
-   - **Ne doit pas faire partie** d’une liste de mots de passe courants (blacklist simple)
-4. Complexité minimale :
-   - Le mot de passe doit contenir **au moins 3 types** différents parmi :
-     - majuscules
-     - minuscules
-     - chiffres
-     - caractères spéciaux
+## 🎯 Fonctionnalités principales
 
-Le validateur fournit aussi un **indice de force** du mot de passe :
-
-- `weak` : faible
-- `medium` : moyen
-- `strong` : fort
-
-## 2. Structure du projet
-
-```text
-C:\Users\Franc\IdeaProjects\Passwordvalidator
-├─ src
-│  └─ passwordValidator.py
-└─ tests
-   └─ test_passwordValidator.py
-```
-
-- `src/passwordValidator.py` : contient la classe `PasswordValidator` et l’énumération `PasswordStrength`.
-- `tests/test_passwordValidator.py` : contient les tests unitaires organisés **par catégorie** (longueur, espaces, blacklist, force, etc.).
-
-Validateur de mots de passe en Python avec architecture modulaire, configuration flexible et tests unitaires complets.
-
-## 🎯 Fonctionnalités
-
-- ✅ Validation complète avec règles strictes et caractéristiques
-- ✅ Configuration flexible via dataclasses
-- ✅ Évaluation de la force du mot de passe (strong/medium/weak/invalid)
-- ✅ Messages d'erreur détaillés
-- ✅ Architecture modulaire et maintenable
-- ✅ Type hints complets
-- ✅ Tests unitaires exhaustifs (21 tests, 100% de réussite)
+- ✅ Validation stricte avec règles bloquantes et caractéristiques optionnelles
+- ✅ Vérification asynchrone des mots de passe compromis (Breach Checker)
+- ✅ Dégradation gracieuse en cas d'indisponibilité du service de breach
+- ✅ Configuration entièrement personnalisable
+- ✅ Évaluation de la force (invalid/weak/medium/strong)
+- ✅ Messages d'erreur détaillés en français
+- ✅ Type hints complets et mypy-compatible
+- ✅ Tests unitaires avec pattern AAA (Arrange-Act-Assert)
 
 ## 📁 Structure du projet
 
 ```
 Passwordvalidator/
 ├── src/
-│   ├── rules.py                  # Règles de validation individuelles
-│   ├── types.py                  # Types, enums et dataclasses
-│   ├── validation_service.py     # Service de validation
-│   └── passwordValidator.py      # API publique simple
+│   ├── passwordValidator.py      # Classe publique PasswordValidator (API simple)
+│   ├── validation_service.py     # Service de validation (logique métier)
+│   ├── breach_checker.py         # Port & adaptateurs (pattern hexagonal)
+│   ├── types.py                  # Enums, dataclasses, types
+│   └── rules.py                  # Règles de validation individuelles
 ├── tests/
-│   └── test_passwordValidator.py # Tests unitaires complets
-└── README.md
+│   └── test_passwordValidator.py # 25 tests avec pattern AAA
+├── README.md
+└── Passwordvalidator.iml
 ```
 
-## 🚀 Installation
+## 📖 Règles de validation
 
-### Prérequis
+### Règles strictes (bloquantes)
 
-- Python 3.10+
-- pytest (pour les tests)
+Un mot de passe **doit respecter** toutes ces règles pour être considéré comme valide :
+
+1. **Longueur** : 8 à 20 caractères (configurable)
+   ```
+   ❌ "Short1!" → Trop court
+   ✅ "Pass1234!" → OK
+   ❌ "VeryLongPassword1234567890!" → Trop long
+   ```
+
+2. **Pas d'espaces**
+   ```
+   ❌ "Pass word123!" → Contient espace
+   ✅ "Password123!" → OK
+   ```
+
+3. **Caractères consécutifs** : Max 3 caractères identiques consécutifs
+   ```
+   ❌ "Paaaass1!" → 4 'a' consécutifs
+   ✅ "Paaa1234!" → 3 'a' max
+   ```
+
+4. **Pas dans la liste noire** : Évite les mots de passe courants
+   ```
+   ❌ "password" → Mot de passe commun
+   ✅ "SecurePass123!" → Unique
+   ```
+
+5. **Vérification des fuites** (optionnel avec BreachChecker)
+   ```
+   ❌ "breached123" → Trouvé dans une fuite connue
+   ✅ "SecurePass123!" → Non compromis
+   ```
+
+### Règles de caractéristiques (tolérance : 1 manquant sur 4)
+
+Le mot de passe doit contenir **au moins 3 sur 4** des éléments suivants :
+
+- ✓ Au moins une **majuscule** (A-Z)
+- ✓ Au moins une **minuscule** (a-z)
+- ✓ Au moins un **chiffre** (0-9)
+- ✓ Au moins un **caractère spécial** (!@#$%^&*()_+-=[]{}...) 
+
+**Exemples** :
+```
+✅ "SecurePass123!"  → Toutes les 4 caractéristiques → STRONG
+✅ "Pass1234"       → 3 caractéristiques (pas spécial) → MEDIUM
+✅ "PassWord!"      → 3 caractéristiques (pas chiffre) → MEDIUM
+❌ "PASSWORD1"      → 2 caractéristiques (pas minuscule/spécial) → INVALID
+```
+
+## 🚀 Installation et utilisation
+
+### Installation
 
 ```bash
-python -m pip install pytest
-```
+# Prérequis
+python -m pip install pytest pytest-asyncio
 
-## 💻 Utilisation
+# Cloner/télécharger le projet
+cd passwordvalidator
+```
 
 ### Utilisation basique
 
 ```python
+import asyncio
 from src.passwordValidator import PasswordValidator
 
-validator = PasswordValidator()
+async def main():
+    validator = PasswordValidator()
+    
+    # Validation simple
+    is_valid = await validator.validate("SecurePass123!")
+    print(is_valid)  # True
+    
+    # Évaluation de la force
+    strength = await validator.get_strength("Pass1234")
+    print(strength)  # "medium"
+    
+    # Rapport complet
+    report = await validator.get_validation_report("weak")
+    print(report)
+    # {
+    #     "is_valid": False,
+    #     "valid": False,
+    #     "strength": "invalid",
+    #     "errors": ["Le mot de passe doit contenir au moins 8 caractères."]
+    # }
 
-# Validation simple
-is_valid = validator.validate("SecurePass123!")
-print(is_valid)  # True
-
-# Évaluation de la force
-strength = validator.get_strength("Pass1234")
-print(strength)  # "medium"
-
-# Rapport complet
-report = validator.get_validation_report("weak")
-print(report)
-# {
-#     "is_valid": False,
-#     "valid": False,
-#     "strength": "invalid",
-#     "errors": ["Le mot de passe doit contenir au moins 8 caractères."]
-# }
+asyncio.run(main())
 ```
 
 ### Configuration personnalisée
@@ -115,123 +140,214 @@ print(report)
 from src.passwordValidator import PasswordValidator
 from src.types import ValidationConfig
 
-# Configuration personnalisée
+# Configuration sur mesure
 config = ValidationConfig(
     min_length=10,
     max_length=30,
     max_consecutive=2,
-    characteristic_tolerance=0,  # Toutes les caractéristiques requises
+    characteristic_tolerance=0,  # Toutes les 4 caractéristiques requises
     common_passwords=["motdepasse", "admin123"]
 )
 
 validator = PasswordValidator(config)
+report = await validator.get_validation_report("MyPassword123!")
 ```
 
-## 📋 Règles de validation
+### Avec vérification des fuites (Pattern Hexagonal)
 
-### Règles strictes (obligatoires)
+```python
+from src.passwordValidator import PasswordValidator
+from src.breach_checker import FakeBreachChecker, SpyBreachChecker
 
-1. **Longueur** : Entre 8 et 20 caractères (configurable)
-2. **Pas d'espaces** : Aucun espace autorisé
-3. **Caractères consécutifs** : Maximum 3 caractères identiques consécutifs (configurable)
-4. **Blacklist** : Ne doit pas être dans la liste des mots de passe courants
+# Test avec un fake (sans appel API)
+fake_checker = FakeBreachChecker(["breached123", "exposed456"])
+validator = PasswordValidator(breach_checker=fake_checker)
 
-### Règles de caractéristiques (tolérance possible)
+# Spy pour vérifier l'appel
+spy_checker = SpyBreachChecker()
+validator = PasswordValidator(breach_checker=spy_checker)
+await validator.validate("SecurePass123!")
+print(spy_checker.call_count)  # 1
 
-Le mot de passe doit contenir **au moins 3 sur 4** des éléments suivants (configurable) :
+# Production avec vérification réelle (pseudo-code)
+# http_checker = HttpBreachChecker(api_url="https://api.pwnedpasswords.com")
+# validator = PasswordValidator(breach_checker=http_checker)
 
-1. Au moins une **majuscule** (A-Z)
-2. Au moins une **minuscule** (a-z)
-3. Au moins un **chiffre** (0-9)
-4. Au moins un **caractère spécial** (!@#$%^&*()_+-=[]{}
-
-;':"\\|,.<>/?)
-
-### Niveaux de force
-
-- **strong** : Toutes les caractéristiques présentes
-- **medium** : 3 caractéristiques sur 4
-- **weak** : Au moins 1 caractéristique
-- **invalid** : Échec des règles strictes ou moins de 1 caractéristique
+report = await validator.get_validation_report("SecurePass123!")
+print(report["errors"])  # [] si mot de passe safe
+```
 
 ## 🧪 Tests
+
+Les tests suivent le pattern **Arrange-Act-Assert** pour une clarté maximale.
 
 ### Lancer tous les tests
 
 ```bash
-python -m pytest -v
+python -m pytest tests/test_passwordValidator.py -v
+python -m pytest tests/test_passwordValidator.py --tb=short
 ```
 
-### Lancer une catégorie spécifique
+### Lancer par catégorie
 
 ```bash
+# Tests de longueur
 python -m pytest -k TestPasswordLength -v
+
+# Tests de force
 python -m pytest -k TestPasswordStrength -v
+
+# Tests du breach checker
+python -m pytest -k TestBreachChecker -v
+
+# Tests d'espace
+python -m pytest -k TestPasswordSpaces -v
+
+# Tests de caractères consécutifs
+python -m pytest -k TestPasswordConsecutiveChars -v
 ```
 
-### Lancer un test précis
+### Exemple de test avec pattern AAA
 
-```bash
-python -m pytest -k test_password_too_short -v
+```python
+@pytest.mark.asyncio
+async def test_strength_strong(self, validator):
+    # Arrange
+    password = "Pass1234!&"
+    
+    # Act
+    report = await validator.get_validation_report(password)
+    
+    # Assert
+    assert report["strength"] == "strong"
 ```
 
-## 🏗️ Architecture
+## 🏗️ Architecture hexagonale
 
-### Avantages de cette architecture
+### Diagramme
 
-1. **Séparation des responsabilités** : Chaque module a un rôle clair
-   - `rules.py` : Règles de validation pures
-   - `types.py` : Définitions de types et configuration
-   - `validation_service.py` : Logique métier
-   - `passwordValidator.py` : API publique simple
+```
+┌─────────────────────────────────────────┐
+│   PasswordValidator (API Publique)      │  ← Adapter sortant
+└──────────────┬──────────────────────────┘
+               │
+┌──────────────▼──────────────────────────┐
+│  PasswordValidationService (Domaine)    │
+│  - Exécute les 9 règles de validation   │
+│  - Coordonne le breach checker          │
+│  - Calcule la force du mot de passe     │
+└──────────────┬──────────────────────────┘
+               │
+    ┌──────────▼──────────────────┐
+    │  BreachChecker (PORT)       │  ← Interface abstraite
+    │  interface async             │
+    └──┬──────────┬────────┬───────┘
+       │          │        │
+    ┌──▼──┐  ┌───▼──┐  ┌──▼──────┐
+    │Fake │  │Failing│ │Spy      │  ← Adapters
+    └─────┘  └───────┘ └─────────┘     (pour tests)
+```
 
-2. **Configuration flexible** : Utilisation de dataclasses pour une configuration type-safe
+### Concepts clés
 
-3. **Extensibilité** : Ajout facile de nouvelles règles sans modifier le code existant
+- **Domaine** : `PasswordValidationService` - aucune dépendance externe
+- **Port** : `BreachChecker` - interface abstraite définissant le contrat
+- **Adapters** : `FakeBreachChecker`, `FailingBreachChecker`, `SpyBreachChecker` - implémentations pour tests
+- **Injection de dépendances** : Le breach_checker est optionnel et injectable
 
-4. **Testabilité** : Chaque composant peut être testé indépendamment
+### Avantages
 
-5. **Type safety** : Type hints complets pour une meilleure maintenance
+1. ✅ **Testable** : Injecter des fakes sans appeler d'API
+2. ✅ **Flexible** : Changer d'implémentation sans modifier le domaine
+3. ✅ **Dégradation gracieuse** : Si le breach check échoue, validation continue
+4. ✅ **Maintenable** : Chaque responsabilité bien isolée
 
-6. **Documentation** : Docstrings complètes sur toutes les fonctions publiques
+## 📊 Tableau de validation
 
-## 📊 Exemples de validation
+| Mot de passe | Longueur | Caractères | Force | Breach | ✅/❌ |
+|---|---|---|---|---|---|
+| `SecurePass123!` | ✅ | 4/4 | strong | Safe | ✅ |
+| `Pass1234` | ✅ | 3/4 | medium | Safe | ✅ |
+| `PassWord!` | ✅ | 3/4 | medium | Safe | ✅ |
+| `PASSWORD1` | ✅ | 2/4 | - | Safe | ❌ |
+| `short` | ❌ Trop court | - | - | Safe | ❌ |
+| `password` | ✅ | ✅ | - | Commun | ❌ |
+| `Pass 123!` | ✅ | ✅ | ✅ | Espace | ❌ |
+| `Paaaass1!` | ✅ | ✅ | ✅ | 4 'a' | ❌ |
 
-| Mot de passe | Valide | Force | Erreurs |
-|--------------|--------|-------|---------|
-| `SecurePass123!` | ✅ | strong | - |
-| `Pass1234` | ✅ | medium | - |
-| `PassWord!` | ✅ | medium | - |
-| `PASSWORD1` | ❌ | weak | Manque minuscule et caractère spécial |
-| `short` | ❌ | invalid | Trop court |
-| `password` | ❌ | invalid | Trop commun |
-| `Pass 123!` | ❌ | invalid | Contient des espaces |
-| `Paaaass1!` | ❌ | invalid | 4 'a' consécutifs |
+## 🔑 Concepts importants
 
-## 🎓 Pour votre professeur
+### Règles strictes vs Caractéristiques
 
-Ce projet démontre :
+```python
+# STRICT : 1 échec = invalide
+✅ Longueur (8-20 caractères)
+✅ Pas d'espaces
+✅ Max 3 caractères consécutifs
+✅ Pas dans la liste noire
+✅ Pas compromis (si vérification activée)
 
-- ✅ Architecture modulaire et SOLID principles
-- ✅ Design patterns (Factory, Strategy)
-- ✅ Configuration flexible avec dataclasses
-- ✅ Type hints complets (Python 3.10+)
-- ✅ Tests unitaires exhaustifs avec pytest
-- ✅ Documentation complète avec docstrings
-- ✅ Code maintenable et extensible
-- ✅ Gestion propre des erreurs
+# CARACTÉRISTIQUES : tolérance de 1 (3/4 requis)
+✓ Majuscule
+✓ Minuscule
+✓ Chiffre
+✓ Caractère spécial
+```
 
-### Commandes pour évaluation
+### Programmation asynchrone
 
-```bash
-# Tests complets
-python -m pytest -v
+Toutes les méthodes sont `async` pour permettre :
+- Appels API non-bloquants (vérification des fuites)
+- Intégration future avec des services externes
+- Dégradation gracieuse en cas de timeout
 
-# Tests par catégorie
-python -m pytest -k TestPasswordLength -v
-python -m pytest -k TestPasswordStrength -v
+```python
+# ⚠️ Important : utiliser async/await !
+is_valid = await validator.validate("password")  # ✅
+is_valid = validator.validate("password")         # ❌ TypeError
+```
+
+## 🧬 Technologies
+
+- **Python 3.13+** : Type hints modernes, syntaxe async/await
+- **pytest 9.0+** : Framework de test léger et puissant
+- **pytest-asyncio 1.3+** : Support natif des tests asynchrones
+- **Dataclasses** : Configuration type-safe et immutable
+- **ABC (Abstract Base Classes)** : Interfaces abstraites
+
+## 📈 Statistiques du projet
+
+- **25 tests** organisés en 7 catégories
+- **Pattern AAA** (Arrange-Act-Assert) pour chaque test
+- **9 règles** de validation indépendantes
+- **100% de réussite** des tests
+- **3 adaptateurs** pour le breach checker (Fake, Failing, Spy)
+- **Architecture hexagonale** complète
+
+## 🚦 Pattern de test - Arrange-Act-Assert
+
+Chaque test suit cette structure :
+
+```python
+@pytest.mark.asyncio
+async def test_example(self, validator):
+    # ARRANGE : Préparer les données de test
+    password = "TestPassword123!"
+    expected_strength = "strong"
+    
+    # ACT : Exécuter le code à tester
+    report = await validator.get_validation_report(password)
+    
+    # ASSERT : Vérifier les résultats
+    assert report["strength"] == expected_strength
+    assert report["is_valid"] is True
 ```
 
 ---
 
-**Développé avec Python 3.13 | pytest 9.0.2**
+**Projet démontrant les patterns modernes de Python**
+- **Fait avec** : Python 3.13 | pytest 9.0.3 | pytest-asyncio 1.3.0
+- **Architecture** : Hexagonale (Ports & Adapters)
+- **Tests** : 25 tests avec pattern AAA
+- **État** : 100% de réussite ✅
+

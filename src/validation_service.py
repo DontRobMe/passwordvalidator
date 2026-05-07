@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from src.types import Rule, ValidationResult, PasswordStrength, ValidationConfig
 from src.rules import (
     min_length_rule,
@@ -11,12 +11,14 @@ from src.rules import (
     number_rule,
     special_char_rule
 )
+from src.breach_checker import BreachChecker
 
 
 class PasswordValidationService:
 
-    def __init__(self, config: ValidationConfig = None):
+    def __init__(self, config: ValidationConfig = None, breach_checker: Optional[BreachChecker] = None):
         self.config = config or ValidationConfig()
+        self.breach_checker = breach_checker
         self._setup_rules()
 
     def _setup_rules(self) -> None:
@@ -35,7 +37,7 @@ class PasswordValidationService:
             special_char_rule
         ]
 
-    def validate(self, password: str) -> ValidationResult:
+    async def validate(self, password: str) -> ValidationResult:
         strict_results = [rule(password) for rule in self.strict_rules]
         strict_errors = [msg for ok, msg in strict_results if not ok]
 
@@ -46,19 +48,31 @@ class PasswordValidationService:
                 errors=strict_errors
             )
 
+        # Check breach
+        breach_error = []
+        if self.breach_checker:
+            try:
+                breached = await self.breach_checker.is_breached(password)
+                if breached:
+                    breach_error = ["Le mot de passe a été compromis dans une fuite de données."]
+            except Exception:
+                # Degrade gracefully: skip breach check on failure
+                pass
+
         char_results = [rule(password) for rule in self.characteristic_rules]
         successful_checks = sum(1 for ok, _ in char_results if ok)
         char_errors = [msg for ok, msg in char_results if not ok]
 
+        all_errors = breach_error + char_errors
         is_valid = successful_checks >= (
             len(self.characteristic_rules) - self.config.characteristic_tolerance
-        )
-        strength = self._calculate_strength(successful_checks)
+        ) and not breach_error
+        strength = self._calculate_strength(successful_checks) if not breach_error else PasswordStrength.INVALID
 
         return ValidationResult(
             is_valid=is_valid,
             strength=strength,
-            errors=char_errors if not is_valid else []
+            errors=all_errors if not is_valid else []
         )
 
     def _calculate_strength(self, successful_checks: int) -> PasswordStrength:
